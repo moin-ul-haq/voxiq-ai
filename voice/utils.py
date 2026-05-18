@@ -63,7 +63,7 @@ def create_vapi_assistant(interview, user) -> dict:
     }
 
     payload = {
-        "name": f"Voxiq Interview — {interview.job_title}",
+        "name": f"Voxiq — {interview.job_title[:30]}",
         "model": {
             "provider": "groq",
             "model": "llama-3.3-70b-versatile",

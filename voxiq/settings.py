@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
+from datetime import timedelta
 from pathlib import Path
 import os
 from dotenv import load_dotenv
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'accounts',
@@ -48,6 +49,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -144,3 +146,20 @@ GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
 # VAPI
 VAPI_API_KEY = os.environ.get('VAPI_API_KEY')
 VAPI_WEBHOOK_SECRET = os.environ.get('VAPI_WEBHOOK_SECRET')
+
+
+
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # React Vite
+    "http://localhost:3000",  # React CRA agar use ho
+]
+
+
+
+
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1), 
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+}
