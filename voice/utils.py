@@ -118,3 +118,66 @@ def delete_vapi_assistant(assistant_id: str):
         )
     except Exception:
         pass  # Non-critical — log but don't fail
+
+
+def generate_interview_evaluation(session):
+    """
+    Sends the interview transcript to Groq LLM to generate a structured evaluation.
+    Returns a dict containing the parsed JSON evaluation.
+    """
+    if not session.transcript:
+        return None
+
+    from groq import Groq
+    import json
+
+    client = Groq(api_key=settings.GROQ_API_KEY)
+    interview = session.interview
+    user = interview.user
+
+    resume_section = ""
+    if user.resume_text:
+        resume_section = f"\n## Candidate Resume\n{user.resume_text}\n"
+
+    system_prompt = f"""You are an expert technical recruiter and interview evaluator.
+Your task is to review the transcript of a mock interview and provide a structured evaluation of the candidate's performance.
+
+## Target Job
+**Title:** {interview.job_title}
+**Description:**
+{interview.job_description}
+{resume_section}
+
+You MUST return your evaluation EXACTLY in the following JSON schema. Do NOT wrap it in markdown block quotes (e.g., no ```json). Just return the raw JSON object.
+
+{{
+  "overall_score": 85,
+  "metrics": {{
+    "technical_competence": 80,
+    "communication_skills": 90,
+    "problem_solving": 85
+  }},
+  "strengths": ["string", "string"],
+  "areas_for_improvement": ["string", "string"],
+  "detailed_feedback": "A detailed 2-3 paragraph summary of the interview."
+}}
+"""
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": f"Here is the interview transcript:\n\n{session.transcript}"}
+    ]
+
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            response_format={"type": "json_object"},
+            temperature=0.2,
+        )
+        content = response.choices[0].message.content
+        evaluation_data = json.loads(content)
+        return evaluation_data
+    except Exception as e:
+        print(f"Failed to generate evaluation: {e}")
+        return None

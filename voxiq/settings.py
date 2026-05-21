@@ -40,13 +40,28 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
+    # allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.linkedin_oauth2',
+    
+    # 3rd party
+    'storages',
+
+    # project apps
     'accounts',
     'interviews',
     'voice',
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -57,6 +72,12 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
 ROOT_URLCONF = "voxiq.urls"
@@ -82,12 +103,14 @@ WSGI_APPLICATION = "voxiq.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+import dj_database_url
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    # If DATABASE_URL is set in .env, it uses it (Supabase). Otherwise, it falls back to local SQLite.
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600
+    )
 }
 
 
@@ -163,3 +186,90 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1), 
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
 }
+
+
+# ──────────────────────────────────────────────────────
+# django-allauth Configuration
+# ──────────────────────────────────────────────────────
+
+# Frontend URL — where allauth redirects after successful OAuth login
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+
+# After allauth processes OAuth, redirect to our JWT-issuing view
+LOGIN_REDIRECT_URL = '/api/auth/oauth/success/'
+
+# allauth account settings
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# Social account settings
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True               # match by email
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True   # auto-connect to existing account
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'                # skip email verification for OAuth
+SOCIALACCOUNT_LOGIN_ON_GET = True                        # skip "Continue?" intermediate page
+SOCIALACCOUNT_ADAPTER = 'accounts.adapters.SocialAccountAdapter'
+
+# Provider credentials (from .env)
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+        },
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+    },
+    'github': {
+        'APP': {
+            'client_id': os.environ.get('GITHUB_CLIENT_ID', ''),
+            'secret': os.environ.get('GITHUB_CLIENT_SECRET', ''),
+        },
+        'SCOPE': ['user:email'],
+    },
+    'linkedin_oauth2': {
+        'APP': {
+            'client_id': os.environ.get('LINKEDIN_CLIENT_ID', ''),
+            'secret': os.environ.get('LINKEDIN_CLIENT_SECRET', ''),
+        },
+        'SCOPE': ['openid', 'profile', 'email'],
+    },
+}
+
+
+# ──────────────────────────────────────────────────────
+# Cloudflare R2 Storage Configuration (AWS S3 Compatible)
+# ──────────────────────────────────────────────────────
+
+CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID')
+
+if CLOUDFLARE_ACCOUNT_ID:
+    AWS_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME')
+    
+    # R2 Endpoint URL format
+    AWS_S3_ENDPOINT_URL = f"https://{CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+    AWS_S3_CUSTOM_DOMAIN = f"{CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/{AWS_STORAGE_BUCKET_NAME}"
+
+    # Tell Django to use this custom S3 storage for files
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+else:
+    # Fallback to local storage if R2 isn't configured in .env yet
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'

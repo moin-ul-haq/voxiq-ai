@@ -8,6 +8,8 @@ from .views import (
     ProfileView,
     ResumeUploadView,
     CompleteOnboardingView,
+    OAuthAuthURLView,
+    OAuthCallbackView,
 )
 
 urlpatterns = [
@@ -19,4 +21,8 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('profile/resume/', ResumeUploadView.as_view(), name='resume-upload'),
     path('onboarding/complete/', CompleteOnboardingView.as_view(), name='onboarding-complete'),
+
+    # OAuth API endpoints
+    path('oauth/<str:provider>/auth-url/', OAuthAuthURLView.as_view(), name='oauth-auth-url'),
+    path('oauth/<str:provider>/callback/', OAuthCallbackView.as_view(), name='oauth-callback'),
 ]

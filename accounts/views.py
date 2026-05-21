@@ -147,3 +147,123 @@ class CompleteOnboardingView(APIView):
             {'message': 'Onboarding complete.'},
             status=status.HTTP_200_OK
         )
+
+
+# ──────────────────────────────────────────────────────
+# OAuth Views (REST API)
+# ──────────────────────────────────────────────────────
+
+from .oauth import (
+    build_auth_url,
+    exchange_code_for_token,
+    get_user_info,
+    get_or_create_oauth_user,
+    validate_provider,
+)
+
+
+class OAuthAuthURLView(APIView):
+    """
+    GET /api/auth/oauth/<provider>/auth-url/
+
+    Returns the OAuth consent screen URL for the given provider.
+    The redirect_uri is automatically set to this backend's callback endpoint.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, provider):
+        # We automatically construct the redirect_uri to point to our callback view
+        from django.urls import reverse
+        callback_path = reverse('oauth-callback', kwargs={'provider': provider})
+        redirect_uri = request.build_absolute_uri(callback_path)
+
+        try:
+            auth_url = build_auth_url(provider, redirect_uri)
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({'auth_url': auth_url}, status=status.HTTP_200_OK)
+
+
+class OAuthCallbackView(APIView):
+    """
+    GET /api/auth/oauth/<provider>/callback/?code=...
+    
+    The OAuth provider redirects the user directly to this backend endpoint.
+    The backend automatically extracts the code, exchanges it for tokens,
+    and returns the JWT response.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, provider):
+        code = request.query_params.get('code')
+        error = request.query_params.get('error')
+
+        if error:
+            return Response(
+                {'error': f'OAuth provider returned an error: {error}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not code:
+            return Response(
+                {'error': 'Authorization code is missing from the request.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate provider
+        try:
+            validate_provider(provider)
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # The redirect_uri must match exactly what was used to generate the auth_url
+        # We reconstruct the exact URL of this callback endpoint
+        redirect_uri = request.build_absolute_uri(request.path)
+
+        # Step 1: Exchange code
+        try:
+            access_token = exchange_code_for_token(provider, code, redirect_uri)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to exchange authorization code. {str(e)}'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # Step 2: Fetch user info
+        try:
+            user_info = get_user_info(provider, access_token)
+        except Exception:
+            return Response(
+                {'error': 'Failed to retrieve user information from the provider.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # Step 3: Find or create user
+        try:
+            user = get_or_create_oauth_user(
+                email=user_info['email'],
+                first_name=user_info.get('first_name', ''),
+                last_name=user_info.get('last_name', ''),
+            )
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Step 4: Return JWT
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': LoginResponseSerializer(user).data,
+        }, status=status.HTTP_200_OK)
+

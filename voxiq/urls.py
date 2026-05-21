@@ -23,4 +23,6 @@ urlpatterns = [
     path('api/interviews/',include('interviews.urls')),
     path('api/voice/',include('voice.urls')),
 
+    # allauth — handles OAuth redirect & callback for all providers
+    path('accounts/', include('allauth.urls')),
 ]

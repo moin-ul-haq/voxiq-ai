@@ -23,6 +23,7 @@ class MockInterviewSession(models.Model):
         default='initiated'
     )
     transcript = models.JSONField(blank=True, null=True)
+    evaluation = models.JSONField(blank=True, null=True)
     duration_seconds = models.IntegerField(null=True, blank=True)
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)

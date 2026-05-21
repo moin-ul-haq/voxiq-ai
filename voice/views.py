@@ -146,6 +146,12 @@ class VapiWebhookView(APIView):
         session.transcript = message.get('transcript')
         session.duration_seconds = int(message.get('durationSeconds', 0))
         session.ended_at = datetime.now(timezone.utc)
+
+        # Generate LLM evaluation from transcript
+        from .utils import generate_interview_evaluation
+        if session.transcript:
+            session.evaluation = generate_interview_evaluation(session)
+
         session.save()
 
         # Clean up VAPI assistant after call ends
