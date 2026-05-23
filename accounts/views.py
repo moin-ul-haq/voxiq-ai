@@ -161,21 +161,21 @@ from .oauth import (
     validate_provider,
 )
 
-
 class OAuthAuthURLView(APIView):
     """
-    GET /api/auth/oauth/<provider>/auth-url/
+    GET /api/auth/oauth/<provider>/auth-url/?redirect_uri=...
 
     Returns the OAuth consent screen URL for the given provider.
-    The redirect_uri is automatically set to this backend's callback endpoint.
+    The frontend should provide the redirect_uri it will use for the callback.
     """
     permission_classes = [AllowAny]
 
     def get(self, request, provider):
-        # We automatically construct the redirect_uri to point to our callback view
-        from django.urls import reverse
-        callback_path = reverse('oauth-callback', kwargs={'provider': provider})
-        redirect_uri = request.build_absolute_uri(callback_path)
+        # Frontend must pass its callback URL (e.g. http://localhost:5173/auth/callback)
+        redirect_uri = request.query_params.get('redirect_uri')
+        if not redirect_uri:
+            from django.conf import settings
+            redirect_uri = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173') + '/auth/callback'
 
         try:
             auth_url = build_auth_url(provider, redirect_uri)
@@ -185,32 +185,27 @@ class OAuthAuthURLView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response({'auth_url': auth_url}, status=status.HTTP_200_OK)
+        return Response({'auth_url': auth_url, 'redirect_uri': redirect_uri}, status=status.HTTP_200_OK)
 
 
-class OAuthCallbackView(APIView):
+
+class OAuthLoginView(APIView):
     """
-    GET /api/auth/oauth/<provider>/callback/?code=...
+    POST /api/auth/oauth/<provider>/login/
     
-    The OAuth provider redirects the user directly to this backend endpoint.
-    The backend automatically extracts the code, exchanges it for tokens,
-    and returns the JWT response.
+    The frontend sends the authorization code (and optional redirect_uri).
+    The backend exchanges the code for tokens and returns a JWT response.
     """
     permission_classes = [AllowAny]
 
-    def get(self, request, provider):
-        code = request.query_params.get('code')
-        error = request.query_params.get('error')
-
-        if error:
-            return Response(
-                {'error': f'OAuth provider returned an error: {error}'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    def post(self, request, provider):
+        code = request.data.get('code')
+        # Google's JS library uses 'postmessage' for popup flow
+        redirect_uri = request.data.get('redirect_uri', 'postmessage')
 
         if not code:
             return Response(
-                {'error': 'Authorization code is missing from the request.'},
+                {'error': 'Authorization code is required.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -222,10 +217,6 @@ class OAuthCallbackView(APIView):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # The redirect_uri must match exactly what was used to generate the auth_url
-        # We reconstruct the exact URL of this callback endpoint
-        redirect_uri = request.build_absolute_uri(request.path)
 
         # Step 1: Exchange code
         try:

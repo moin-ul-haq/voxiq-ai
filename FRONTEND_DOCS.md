@@ -2,37 +2,52 @@
 
 This document outlines the recent backend updates and provides the exact API endpoints and JSON structures you need to integrate the frontend.
 
-## 1. OAuth Flow (100% Backend Managed — Single Step)
+## 1. OAuth Flow (Frontend Managed with Redirect)
 
-This is a fully backend-managed OAuth flow. The frontend **never** needs to handle the code exchange — the backend does it automatically. There are only **two things the frontend needs to do**:
+This is a frontend-driven OAuth flow. The frontend acts as the callback handler, retrieves the `code` from Google, and securely sends it to the Django backend for token exchange.
 
 ### Step 1: Get the Auth URL
-Call this endpoint to get the provider's consent screen URL. The backend automatically builds the correct `redirect_uri` pointing back to itself.
+Call this endpoint to get the provider's consent screen URL.
 
 **Request (No Auth Required):**
-`GET /api/auth/oauth/google/auth-url/`
+`GET /api/auth/oauth/google/auth-url/?redirect_uri=http://localhost:5173/auth/callback`
+
+*(If you omit `redirect_uri`, it defaults to the `FRONTEND_URL` in Django settings + `/auth/callback`)*
 
 **Response (200 OK):**
 ```json
 {
-  "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=http://localhost:8000/api/auth/oauth/google/callback/&..."
+  "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=http://localhost:5173/auth/callback&...",
+  "redirect_uri": "http://localhost:5173/auth/callback"
 }
 ```
 
-**Frontend Action:** Redirect the user's browser window to the `auth_url`. *(Either a full page redirect, or open in a popup/new tab.)*
+**Frontend Action:** Redirect the user's browser window to the `auth_url`.
 
 ---
 
-### Step 2: Receive the JWT Tokens (Backend handles everything in between)
+### Step 2: Handle the Callback & Exchange Code
+After the user approves on the Google consent screen, Google will redirect them back to your frontend URL:
+`http://localhost:5173/auth/callback?code=4/0A...`
 
-After the user approves on the consent screen, Google redirects them to `http://localhost:8000/api/auth/oauth/google/callback/`. The backend then automatically:
-1. Extracts the authorization code from the URL.
-2. Exchanges it for a Google access token (server-to-server, secure).
-3. Fetches the user's email, name etc. from Google.
-4. Finds or creates the user in the database.
-5. Issues our own JWT tokens and returns them directly.
+**Frontend Action:**
+1. Extract the `code` from the URL search parameters.
+2. Make a `POST` request to the backend to exchange this code for JWT tokens.
 
-The final **JSON response** lands on the browser at the callback URL:
+**Request to Backend (No Auth Required):**
+`POST /api/auth/oauth/google/login/`
+
+**Request Body:**
+```json
+{
+  "code": "4/0A...",
+  "redirect_uri": "http://localhost:5173/auth/callback" 
+}
+```
+*(Note: The `redirect_uri` you send here MUST exactly match the one used in Step 1).*
+
+**Response (200 OK):**
+The backend will validate the code, create the user if needed, and issue your JWTs.
 ```json
 {
   "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -47,15 +62,12 @@ The final **JSON response** lands on the browser at the callback URL:
 }
 ```
 
-**Frontend Action:** You can handle this in two ways:
-- **Option A (Popup):** Open the auth URL in a popup window. Listen for the popup page URL to change to the callback URL, extract the JSON response from the popup, and close it.
-- **Option B (Redirect + Parse):** Redirect the full page to the auth URL. When the browser lands on the callback URL showing the JSON, your frontend route at that URL can parse the JSON from the response body.
-
 > **Registered Redirect URIs in Google/GitHub/LinkedIn Console:**
-> These are the exact URLs you must whitelist in each provider's developer console:
-> - **Google:** `http://localhost:8000/api/auth/oauth/google/callback/`
-> - **GitHub:** `http://localhost:8000/api/auth/oauth/github/callback/`
-> - **LinkedIn:** `http://localhost:8000/api/auth/oauth/linkedin_oauth2/callback/`
+> These are the exact URLs you must whitelist in each provider's developer console. They should be your FRONTEND URLs, for example:
+> - **Google:** `http://localhost:5173/auth/callback`
+> - **GitHub:** `http://localhost:5173/auth/callback`
+> - **LinkedIn:** `http://localhost:5173/auth/callback`
+
 
 
 ## 2. Voice Interview AI Evaluations
