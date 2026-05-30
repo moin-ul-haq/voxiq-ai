@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-gb%o9iba)&**h#cx)o$zv8%p0p@u9lt_(pkp$dqpmstuzh24j="
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG')
 
 ALLOWED_HOSTS = ['*']
 
@@ -149,6 +149,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -174,8 +176,9 @@ VAPI_WEBHOOK_SECRET = os.environ.get('VAPI_WEBHOOK_SECRET')
 
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # React Vite
-    "http://localhost:3000",  # React CRA agar use ho
+    "http://localhost:5173",  # React Vite (local dev)
+    "http://localhost:3000",  # React CRA
+    "https://voxiq-ai.vercel.app",  # Vercel production
 ]
 
 
@@ -272,4 +275,4 @@ else:
         },
     }
     MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
+    MEDIA_ROOT = BASE_DIR / 'media'
