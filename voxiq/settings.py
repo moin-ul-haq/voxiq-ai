@@ -253,7 +253,11 @@ if CLOUDFLARE_ACCOUNT_ID:
     
     # R2 Endpoint URL format
     AWS_S3_ENDPOINT_URL = f"https://{CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
-    AWS_S3_CUSTOM_DOMAIN = f"{CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/{AWS_STORAGE_BUCKET_NAME}"
+
+    # Generate presigned URLs so private R2 objects can be accessed temporarily
+    AWS_QUERYSTRING_AUTH = True
+    AWS_QUERYSTRING_EXPIRE = 3600  # presigned URLs valid for 1 hour
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
 
     # Tell Django to use this custom S3 storage for files
     STORAGES = {

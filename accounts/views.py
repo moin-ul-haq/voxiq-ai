@@ -130,7 +130,7 @@ class ResumeUploadView(APIView):
 
             return Response({
                 'message': 'Resume uploaded successfully.',
-                'resume_url': request.build_absolute_uri(user.resume.url),
+                'resume_url': user.resume.url,
             }, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
