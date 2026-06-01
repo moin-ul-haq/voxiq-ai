@@ -33,6 +33,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    resume_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -44,10 +46,18 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'current_role',
             'experience_level',
             'resume',
+            'resume_url',
             'onboarding_complete',
             'created_at',
         ]
-        read_only_fields = ['id', 'email', 'resume', 'onboarding_complete', 'created_at']
+        read_only_fields = ['id', 'email', 'resume', 'resume_url', 'onboarding_complete', 'created_at']
+
+    def get_resume_url(self, obj):
+        """Return a fresh presigned URL for the resume, or None."""
+        if obj.resume:
+            return obj.resume.url
+        return None
+
 
 
 class ResumeUploadSerializer(serializers.ModelSerializer):

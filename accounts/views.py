@@ -110,6 +110,21 @@ class ProfileView(APIView):
 class ResumeUploadView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        """Return a fresh presigned URL for the user's resume."""
+        user = request.user
+        if not user.resume:
+            return Response(
+                {'error': 'No resume uploaded.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Generate a fresh presigned URL from the storage backend
+        resume_url = user.resume.url
+        return Response({
+            'resume_url': resume_url,
+        }, status=status.HTTP_200_OK)
+
     def post(self, request):
         serializer = ResumeUploadSerializer(
             request.user,
