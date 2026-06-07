@@ -1,6 +1,8 @@
-# VoxIQ - Frontend Developer Guide
+# VoxIQ - AI Mock Interview Platform
 
-Welcome to the VoxIQ backend! This document outlines how to set up the backend environment locally and provides an overview of the REST API endpoints available for frontend consumption.
+**Live Application:** [https://voxiq-ai.vercel.app](https://voxiq-ai.vercel.app)
+
+Welcome to the VoxIQ backend repository! This document outlines how to set up the Django backend environment locally and provides an overview of the REST API endpoints consumed by the React (Vite) frontend.
 
 ## Prerequisites
 

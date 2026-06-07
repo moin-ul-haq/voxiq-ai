@@ -87,6 +87,8 @@ def create_vapi_assistant(interview, user) -> dict:
         "firstMessage": f"Hello! I'm your Voxiq interviewer today. We'll be doing a mock interview for the {interview.job_title} position. Are you ready to begin?",
         "endCallMessage": "Thank you for your time. That concludes our mock interview. You'll be able to review the transcript shortly. Good luck!",
         "endCallPhrases": ["goodbye", "thank you bye", "end interview", "stop interview"],
+        "customerJoinTimeoutSeconds": 60,
+        "silenceTimeoutSeconds": 60,
     }
 
     response = requests.post(
