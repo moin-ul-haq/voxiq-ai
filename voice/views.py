@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from rest_framework import status
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
@@ -13,7 +14,7 @@ from interviews.models import Interview
 from .models import MockInterviewSession
 from .serializers import MockInterviewSessionSerializer
 from .utils import create_vapi_assistant, delete_vapi_assistant
-
+from accounts.models import User
 
 class SessionStartView(APIView):
     permission_classes = [IsAuthenticated]
@@ -179,3 +180,8 @@ class VapiWebhookView(APIView):
             session.save(update_fields=['vapi_call_id', 'status'])
         except MockInterviewSession.DoesNotExist:
             pass
+@api_view(['GET'])
+def check_health(request):
+    a  = User.objects.get(id=1)
+
+    return Response(data=None,status=status.HTTP_200_OK)
