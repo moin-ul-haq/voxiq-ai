@@ -65,8 +65,8 @@ def create_vapi_assistant(interview, user) -> dict:
     payload = {
         "name": f"Voxiq — {interview.job_title[:30]}",
         "model": {
-            "provider": "groq",
-            "model": "llama-3.3-70b-versatile",
+            "provider": "openai",
+            "model": "openai/gpt-oss-120b",
             "messages": [
                 {
                     "role": "system",
@@ -172,7 +172,7 @@ You MUST return your evaluation EXACTLY in the following JSON schema. Do NOT wra
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=messages,
             response_format={"type": "json_object"},
             temperature=0.2,

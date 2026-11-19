@@ -49,7 +49,7 @@ def get_groq_response(interview, user, chat_history: list) -> str:
     messages = [{"role": "system", "content": system_prompt}] + chat_history
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=messages,
         max_tokens=1024,
         temperature=0.7,
