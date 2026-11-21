@@ -65,7 +65,7 @@ def create_vapi_assistant(interview, user) -> dict:
     payload = {
         "name": f"Voxiq — {interview.job_title[:30]}",
         "model": {
-            "provider": "openai",
+            "provider": "groq",
             "model": "openai/gpt-oss-120b",
             "messages": [
                 {
